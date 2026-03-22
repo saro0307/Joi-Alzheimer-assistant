@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: joi-memory-bot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python memory_bot.py
+    envVars:
+      - key: HF_TOKEN
+        sync: false          # You enter this manually in the Render dashboard
+      - key: PORT
+        value: 10000
+    disk:
+      name: memories-storage
+      mountPath: /data
+      sizeGB: 1

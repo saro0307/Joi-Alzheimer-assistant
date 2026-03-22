@@ -1,0 +1,24 @@
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# LangChain — pinned to avoid pydantic v1/v2 conflicts
+langchain>=0.2.16,<0.3.0
+langchain-core>=0.2.38,<0.3.0
+langchain-community>=0.2.16,<0.3.0
+langchain-huggingface>=0.0.3
+langchain-groq>=0.1.6
+
+# Vector store
+faiss-cpu>=1.7.4
+
+# Embeddings (runs locally on server, no API key needed)
+sentence-transformers>=2.7.0
+
+# Groq client
+groq>=0.9.0
+
+# Pydantic v2
+pydantic>=2.0.0,<3.0.0
+
+# Misc
+python-dotenv>=1.0.0

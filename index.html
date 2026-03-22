@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Joi — Memory Bot</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface2: #18181f;
+      --border: #2a2a38;
+      --accent: #7c6fff;
+      --accent2: #ff6f91;
+      --accent3: #6fffd4;
+      --text: #e8e8f0;
+      --muted: #6a6a80;
+      --bubble-bot: #16162a;
+      --bubble-user: #1c1438;
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(124,111,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124,111,255,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .glow-orb {
+      position: fixed;
+      width: 600px; height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(124,111,255,0.08) 0%, transparent 70%);
+      top: -200px; left: -200px;
+      pointer-events: none; z-index: 0;
+    }
+    .glow-orb2 {
+      position: fixed;
+      width: 400px; height: 400px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(111,255,212,0.05) 0%, transparent 70%);
+      bottom: -100px; right: -100px;
+      pointer-events: none; z-index: 0;
+    }
+
+    .app {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 780px;
+      display: flex; flex-direction: column;
+      height: 100vh; padding: 0 16px;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 0 16px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .logo { display: flex; align-items: center; gap: 12px; }
+
+    .brain-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 0 20px rgba(124,111,255,0.3);
+    }
+
+    .logo-text { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; letter-spacing: -0.5px; }
+    .logo-sub  { font-size: 10px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-top: 1px; }
+
+    .header-right { display: flex; align-items: center; gap: 10px; }
+
+    .rag-badge {
+      background: rgba(111,255,212,0.08);
+      border: 1px solid rgba(111,255,212,0.2);
+      color: var(--accent3);
+      font-size: 10px; letter-spacing: 1px;
+      padding: 4px 10px; border-radius: 20px;
+      text-transform: uppercase;
+    }
+
+    .header-actions { display: flex; gap: 8px; }
+
+    .btn-icon {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--muted); padding: 8px 14px; border-radius: 10px;
+      cursor: pointer; font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; letter-spacing: 0.5px;
+      transition: all 0.2s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .btn-icon:hover { background: var(--border); color: var(--text); border-color: var(--accent); }
+    .btn-icon.danger:hover { border-color: var(--accent2); color: var(--accent2); }
+
+    .status-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #888; box-shadow: 0 0 6px #888;
+      animation: pulse-dot 2s infinite;
+    }
+    @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* ── Memories bar ── */
+    .memories-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 0; overflow-x: auto; flex-shrink: 0;
+      scrollbar-width: none; border-bottom: 1px solid var(--border);
+    }
+    .memories-bar::-webkit-scrollbar { display: none; }
+
+    .memories-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; white-space: nowrap; flex-shrink: 0; }
+
+    .memory-chip {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 20px; padding: 4px 12px; font-size: 11px;
+      color: var(--text); white-space: nowrap;
+      display: flex; align-items: center; gap: 6px;
+      transition: border-color 0.2s;
+    }
+    .memory-chip:hover { border-color: var(--accent); }
+    .memory-chip .del { color: var(--muted); cursor: pointer; font-size: 14px; line-height: 1; }
+    .memory-chip .del:hover { color: var(--accent2); }
+
+    .no-memories { font-size: 11px; color: var(--muted); font-style: italic; }
+
+    /* ── Chat window ── */
+    .chat-window {
+      flex: 1; overflow-y: auto; padding: 20px 0 10px;
+      display: flex; flex-direction: column; gap: 14px;
+      scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    }
+    .chat-window::-webkit-scrollbar { width: 4px; }
+    .chat-window::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .message { display: flex; gap: 10px; animation: slide-in 0.3s ease; }
+    @keyframes slide-in { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+    .message.user { flex-direction: row-reverse; }
+
+    .avatar {
+      width: 32px; height: 32px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; flex-shrink: 0;
+    }
+    .avatar.bot { background: linear-gradient(135deg, var(--accent), #4a3fff); box-shadow: 0 0 12px rgba(124,111,255,0.25); }
+    .avatar.user{ background: linear-gradient(135deg, var(--accent2), #c04060); box-shadow: 0 0 12px rgba(255,111,145,0.2); }
+
+    .bubble {
+      max-width: 75%; padding: 12px 16px;
+      border-radius: var(--radius); font-size: 13.5px; line-height: 1.6;
+    }
+    .bubble.bot  { background: var(--bubble-bot);  border: 1px solid var(--border); border-top-left-radius: 4px;  color: var(--text); }
+    .bubble.user { background: var(--bubble-user); border: 1px solid rgba(124,111,255,0.2); border-top-right-radius: 4px; color: var(--text); }
+
+    .bubble-meta { font-size: 10px; color: var(--muted); margin-top: 5px; letter-spacing: 0.3px; }
+
+    /* typing */
+    .typing-bubble { display: flex; gap: 5px; align-items: center; padding: 14px 18px; }
+    .typing-dot { width:6px;height:6px;background:var(--accent);border-radius:50%;animation:bounce 1.2s infinite; }
+    .typing-dot:nth-child(2){animation-delay:.2s}
+    .typing-dot:nth-child(3){animation-delay:.4s}
+    @keyframes bounce { 0%,80%,100%{transform:translateY(0);opacity:.5} 40%{transform:translateY(-6px);opacity:1} }
+
+    /* tags */
+    .tag { display:inline-block;background:rgba(124,111,255,0.12);border:1px solid rgba(124,111,255,0.25);color:var(--accent);border-radius:5px;padding:1px 7px;font-size:11px;margin:2px 3px 2px 0; }
+    .tag.saved { background:rgba(111,255,212,0.08);border-color:rgba(111,255,212,0.2);color:var(--accent3); }
+    .tag.rag   { background:rgba(255,111,145,0.08);border-color:rgba(255,111,145,0.2);color:var(--accent2); }
+
+    /* ── Input area ── */
+    .input-area {
+      flex-shrink: 0;
+      padding: 14px 0 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .input-row {
+      display: flex; align-items: flex-end; gap: 10px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 16px; padding: 10px 10px 10px 16px;
+      transition: border-color 0.2s;
+    }
+    .input-row:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,111,255,0.08); }
+
+    #user-input {
+      flex: 1; background: transparent; border: none; outline: none;
+      color: var(--text); font-family: 'JetBrains Mono', monospace;
+      font-size: 13.5px; line-height: 1.5; resize: none;
+      max-height: 120px; overflow-y: auto;
+    }
+    #user-input::placeholder { color: var(--muted); }
+
+    .send-btn {
+      background: linear-gradient(135deg, var(--accent), #5a4fff);
+      border: none; color: white; width: 40px; height: 40px;
+      border-radius: 12px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; transition: all 0.2s; flex-shrink: 0;
+    }
+    .send-btn:hover { transform: scale(1.05); box-shadow: 0 0 16px rgba(124,111,255,0.4); }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .input-hint { font-size: 10px; color: var(--muted); margin-top: 8px; text-align: center; letter-spacing: 0.3px; }
+
+    /* backend banner */
+    .backend-banner {
+      background: rgba(255,111,145,0.08); border: 1px solid rgba(255,111,145,0.2);
+      border-radius: 10px; padding: 10px 14px; font-size: 11.5px;
+      color: var(--accent2); margin-bottom: 10px; display: none;
+    }
+    .backend-banner.visible { display: block; }
+
+    /* welcome */
+    .welcome { text-align: center; padding: 40px 20px; color: var(--muted); }
+    .welcome .big { font-size: 40px; margin-bottom: 12px; }
+    .welcome h2 { font-family: 'Syne', sans-serif; font-size: 18px; color: var(--text); margin-bottom: 8px; }
+    .welcome p  { font-size: 12px; line-height: 1.7; max-width: 380px; margin: 0 auto; }
+    .welcome .hint-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 18px; }
+    .hint-chip {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 20px; padding: 6px 14px; font-size: 11px;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .hint-chip:hover { border-color: var(--accent); color: var(--accent); background: rgba(124,111,255,0.05); }
+  </style>
+</head>
+<body>
+  <div class="glow-orb"></div>
+  <div class="glow-orb2"></div>
+
+  <div class="app">
+    <!-- Header -->
+    <header>
+      <div class="logo">
+        <div class="brain-icon">🧠</div>
+        <div>
+          <div class="logo-text">Joi</div>
+          <div class="logo-sub">memory bot</div>
+        </div>
+        <div class="status-dot" id="status-dot" title="Checking backend…"></div>
+      </div>
+      <div class="header-right">
+        <span class="rag-badge">⚡ RAG</span>
+        <div class="header-actions">
+          <button class="btn-icon" onclick="showMemories()">📋 List</button>
+          <button class="btn-icon" onclick="countMemories()">🔢 Count</button>
+          <button class="btn-icon danger" onclick="clearAllMemories()">🗑 Clear</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Memories chips bar -->
+    <div class="memories-bar" id="memories-bar">
+      <span class="memories-label">Memories</span>
+      <span class="no-memories" id="no-mem-text">none yet — tell me something!</span>
+    </div>
+
+    <!-- Backend warning -->
+    <div class="backend-banner" id="backend-banner">
+      ⚠️ Cannot reach backend. Make sure <code>memory_bot.py</code> is running, then open <code>http://localhost:5000</code> — do NOT open index.html directly by double-clicking.
+    </div>
+
+    <!-- Chat -->
+    <div class="chat-window" id="chat-window">
+      <div class="welcome" id="welcome-screen">
+        <div class="big">🧠</div>
+        <h2>Hi, I'm Joi!</h2>
+        <p>Powered by LangChain RAG — I semantically search your memories to answer questions.</p>
+        <div class="hint-chips">
+          <div class="hint-chip" onclick="fillInput('My name is Saro')">My name is Saro</div>
+          <div class="hint-chip" onclick="fillInput('I am from Coimbatore')">I am from Coimbatore</div>
+          <div class="hint-chip" onclick="fillInput('What do you know about me?')">What do you know about me?</div>
+          <div class="hint-chip" onclick="fillInput('Where am I from?')">Where am I from?</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="input-area">
+      <div class="input-row">
+        <textarea
+          id="user-input"
+          rows="1"
+          placeholder="Tell me a fact or ask me something…"
+          onkeydown="handleKey(event)"
+          oninput="autoResize(this)"
+        ></textarea>
+        <button class="send-btn" id="send-btn" onclick="handleSend()">➤</button>
+      </div>
+      <div class="input-hint">Enter to send &nbsp;·&nbsp; Shift+Enter for new line &nbsp;·&nbsp; Powered by LangChain + HuggingFace RAG</div>
+    </div>
+  </div>
+
+  <script>
+    // Auto-detect backend — same server that served this page.
+    // Works locally (http://localhost:5000) AND on Render (https://your-app.onrender.com)
+    // No need to change this line ever.
+    const BACKEND_URL = window.location.origin;
+    const BOT_NAME    = "Joi";
+
+    let memories = [];
+    let _tc = 0;  // typing indicator counter
+
+    // ── Init ──────────────────────────────────────────────────────────────
+    async function init() {
+      const ok = await checkBackend();
+      if (ok) await fetchMemories();
+    }
+
+    async function checkBackend() {
+      const dot = document.getElementById("status-dot");
+      try {
+        const r = await fetch(`${BACKEND_URL}/health`, { signal: AbortSignal.timeout(4000) });
+        if (r.ok) {
+          dot.style.cssText = "background:#3ddc84;box-shadow:0 0 6px #3ddc84";
+          document.getElementById("backend-banner").classList.remove("visible");
+          return true;
+        }
+      } catch (_) {}
+      dot.style.cssText = "background:#ff6f91;box-shadow:0 0 6px #ff6f91";
+      document.getElementById("backend-banner").classList.add("visible");
+      return false;
+    }
+
+    async function fetchMemories() {
+      try {
+        const r    = await fetch(`${BACKEND_URL}/memories`);
+        const data = await r.json();
+        memories   = data.memories || [];
+        renderBar();
+      } catch (_) {}
+    }
+
+    // ── Memories bar ──────────────────────────────────────────────────────
+    function renderBar() {
+      const bar   = document.getElementById("memories-bar");
+      const noMem = document.getElementById("no-mem-text");
+      bar.querySelectorAll(".memory-chip").forEach(c => c.remove());
+      if (!memories.length) { noMem.style.display = ""; return; }
+      noMem.style.display = "none";
+      memories.forEach(m => {
+        const chip = document.createElement("div");
+        chip.className = "memory-chip";
+        chip.innerHTML = `<span>${trunc(m.text, 28)}</span><span class="del" onclick="deleteMemory(${m.id})">×</span>`;
+        bar.appendChild(chip);
+      });
+    }
+
+    function trunc(s, n) { return s.length > n ? s.slice(0, n) + "…" : s; }
+
+    // ── Question detection ────────────────────────────────────────────────
+    const Q_WORDS = ["who","what","where","when","why","how","did","do","does","have","has","is","are","was","were","can","could","would","tell me","show me","list","find","which","give me"];
+
+    function isQuestion(t) {
+      const s = t.trim().toLowerCase();
+      if (s.endsWith("?")) return true;
+      return Q_WORDS.some(w => s.startsWith(w));
+    }
+
+    // ── API calls ─────────────────────────────────────────────────────────
+    async function apiAddMemory(text) {
+      const r    = await fetch(`${BACKEND_URL}/memories`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "Failed to save");
+      memories.push(data.memory);
+      renderBar();
+      return data.confirmation;
+    }
+
+    async function apiAsk(question) {
+      const r    = await fetch(`${BACKEND_URL}/ask`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "RAG error");
+      return data.answer;
+    }
+
+    async function deleteMemory(id) {
+      if (!confirm(`Delete memory #${id}?`)) return;
+      await fetch(`${BACKEND_URL}/memories/${id}`, { method: "DELETE" });
+      memories = memories.filter(m => m.id !== id);
+      renderBar();
+      appendMessage("bot", `Memory <span class="tag">#${id}</span> deleted.`);
+    }
+
+    async function clearAllMemories() {
+      if (!confirm("Clear ALL memories? This cannot be undone.")) return;
+      await fetch(`${BACKEND_URL}/memories`, { method: "DELETE" });
+      memories = [];
+      renderBar();
+      appendMessage("bot", "All memories cleared. Fresh start! 🌱");
+    }
+
+    // ── Commands ──────────────────────────────────────────────────────────
+    function showMemories() {
+      if (!memories.length) { appendMessage("bot", "No memories stored yet. Tell me some facts!"); return; }
+      const list = memories.map(m =>
+        `<span class="tag">#${m.id}</span> ${esc(m.text)} <span style="color:var(--muted);font-size:11px">(${m.timestamp.slice(0,10)})</span>`
+      ).join("<br>");
+      appendMessage("bot", `📋 ${memories.length} memories:<br><br>${list}`);
+    }
+
+    function countMemories() {
+      appendMessage("bot", `You have <span class="tag">${memories.length}</span> memor${memories.length !== 1 ? "ies" : "y"} stored.`);
+    }
+
+    // ── Send ──────────────────────────────────────────────────────────────
+    async function handleSend() {
+      const inp  = document.getElementById("user-input");
+      const text = inp.value.trim();
+      if (!text) return;
+
+      document.getElementById("welcome-screen")?.remove();
+      inp.value = "";
+      autoResize(inp);
+      setLoading(true);
+      appendMessage("user", esc(text));
+
+      const tid = appendTyping();
+      try {
+        if (isQuestion(text)) {
+          const answer = await apiAsk(text);
+          removeTyping(tid);
+          appendMessage("bot", `<span class="tag rag">⚡ RAG</span> ${esc(answer).replace(/\n/g,"<br>")}`);
+        } else {
+          const confirmation = await apiAddMemory(text);
+          removeTyping(tid);
+          appendMessage("bot", `<span class="tag saved">✓ saved</span> ${esc(confirmation)}`);
+        }
+      } catch (err) {
+        removeTyping(tid);
+        appendMessage("bot", `⚠️ ${esc(err.message)}`);
+      }
+
+      setLoading(false);
+      scrollBottom();
+    }
+
+    // ── UI helpers ────────────────────────────────────────────────────────
+    function appendMessage(role, html) {
+      const win = document.getElementById("chat-window");
+      const now = new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+      const el  = document.createElement("div");
+      el.className = `message ${role}`;
+      el.innerHTML = `
+        <div class="avatar ${role}">${role === "bot" ? "🧠" : "🫵"}</div>
+        <div>
+          <div class="bubble ${role}">${html}</div>
+          <div class="bubble-meta">${role === "bot" ? BOT_NAME : "You"} · ${now}</div>
+        </div>`;
+      win.appendChild(el);
+      scrollBottom();
+    }
+
+    function appendTyping() {
+      const id  = `t${_tc++}`;
+      const win = document.getElementById("chat-window");
+      const el  = document.createElement("div");
+      el.className = "message bot"; el.id = id;
+      el.innerHTML = `<div class="avatar bot">🧠</div><div class="bubble bot typing-bubble"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+      win.appendChild(el); scrollBottom(); return id;
+    }
+    function removeTyping(id) { document.getElementById(id)?.remove(); }
+    function setLoading(v) { document.getElementById("send-btn").disabled = v; document.getElementById("user-input").disabled = v; }
+    function scrollBottom() { const w = document.getElementById("chat-window"); w.scrollTop = w.scrollHeight; }
+    function autoResize(el) { el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 120) + "px"; }
+    function handleKey(e)   { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }
+    function fillInput(t)   { const i = document.getElementById("user-input"); i.value = t; i.focus(); autoResize(i); }
+    function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+    // ── Boot ──────────────────────────────────────────────────────────────
+    init();
+  </script>
+</body>
+</html>
