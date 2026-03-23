@@ -2,29 +2,16 @@ services:
   - type: web
     name: joi-memory-bot
     runtime: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: python memory_bot.py
-    envVars:
-      - key: HF_TOKEN
-        sync: false          # You enter this manually in the Render dashboard
-      - key: PORT
-        value: 10000
-    disk:
-      name: memories-storage
-      mountPath: /data
-      sizeGB: 1
-services:
-  - type: web
-    name: joi-memory-bot
-    runtime: python
+    pythonVersion: "3.11.9"
     buildCommand: pip install -r requirements.txt
     startCommand: python Joi.py
     envVars:
       - key: GROQ_API_KEY
-        sync: false          # Enter this manually in the Render dashboard
+        sync: false
       - key: PORT
         value: 10000
     disk:
       name: memories-storage
       mountPath: /data
       sizeGB: 1
+      
