@@ -145,9 +145,11 @@ Go to **http://localhost:5000**
 **Live demo:** https://joi-alzheimer-assistant.onrender.com/
 
 ---
-
+## License
+This project is licensed under the [MIT License](LICENSE), which can be found in the LICENSE file.
 ## ⚠️ Disclaimer
 
+---
 Joi is a beta research project and is not a certified medical device. It is not intended to replace professional medical care or treatment for Alzheimer's disease. Always consult a qualified healthcare professional for medical advice.
 
 ---
