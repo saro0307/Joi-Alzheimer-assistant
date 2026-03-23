@@ -2,11 +2,13 @@
 Joi — LangChain RAG Memory Bot  (Backend)
 ==========================================
 Stack:
-  - Flask          : REST API consumed by index.html
-  - LangChain      : RAG chain, prompt templates, retriever
-  - FAISS          : in-process vector store (no extra server needed)
-  - HuggingFaceEmbeddings : all-MiniLM-L6-v2  (runs on server, free)
-  - ChatGroq       : Llama 3.1 via Groq free API (fast, no cold start)
+  - Flask                        : REST API + serves index.html
+  - LangChain                    : RAG chain, prompt templates, retriever
+  - FAISS                        : in-process vector store (no extra server needed)
+  - RecursiveCharacterTextSplitter : chunks large memories for better retrieval
+  - HuggingFaceEmbeddings        : all-MiniLM-L6-v2 (runs on server, no key needed)
+  - ChatGroq                     : Llama 3.1-8b-instant via Groq free API (fast)
+  - python-dotenv                : loads GROQ_API_KEY from .env file
 
 Deploy on Render:
   1. Push this repo to GitHub
@@ -32,6 +34,7 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains.retrieval import create_retrieval_chain
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.documents import Document
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 # ── Config ────────────────────────────────────────────────────────────────
 MEMORY_FILE  = os.environ.get("MEMORY_FILE", "/data/memories.json" if os.path.isdir("/data") else "memories.json")
@@ -59,7 +62,7 @@ def get_llm():
         api_key=GROQ_API_KEY,
         model="llama-3.1-8b-instant",
         temperature=0.3,
-        max_tokens=512,
+        max_tokens=1024,
     )
 
 # ── JSON storage ──────────────────────────────────────────────────────────
@@ -73,17 +76,33 @@ def save_memories(memories: list[dict]) -> None:
     with open(MEMORY_FILE, "w") as f:
         json.dump(memories, f, indent=2)
 
+# ── Text splitter — breaks large memories into retrievable chunks ──────────
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=300,      # each chunk max 300 characters
+    chunk_overlap=50,    # overlap so context isn't lost at boundaries
+    separators=["\n\n", "\n", ".", ",", " ", ""],
+)
+
 # ── Build FAISS vector store from all memories ────────────────────────────
 def build_vectorstore(memories: list[dict]):
+    """Split large memories into chunks, embed into FAISS for semantic search."""
     if not memories:
         return None
-    docs = [
-        Document(
-            page_content=m["text"],
-            metadata={"id": m["id"], "timestamp": m["timestamp"]},
-        )
-        for m in memories
-    ]
+
+    docs = []
+    for m in memories:
+        chunks = text_splitter.split_text(m["text"])
+        for i, chunk in enumerate(chunks):
+            docs.append(Document(
+                page_content=chunk,
+                metadata={
+                    "id":        m["id"],
+                    "timestamp": m["timestamp"],
+                    "chunk":     i,
+                    "source":    m["text"][:60],
+                },
+            ))
+
     return FAISS.from_documents(docs, embeddings)
 
 # ── RAG prompt — single braces so LangChain recognises {context} & {input}
@@ -104,7 +123,7 @@ def answer_with_rag(question: str, memories: list[dict]) -> str:
     print(f"[DEBUG] Building vectorstore with {len(memories)} memories...")
     vectorstore        = build_vectorstore(memories)
     print("[DEBUG] Vectorstore built. Creating retriever...")
-    retriever          = vectorstore.as_retriever(search_kwargs={"k": min(5, len(memories))})
+    retriever          = vectorstore.as_retriever(search_kwargs={"k": min(10, len(memories) * 3)})
     print("[DEBUG] Getting LLM...")
     llm                = get_llm()
     print("[DEBUG] Building RAG chain...")
