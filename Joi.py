@@ -27,9 +27,9 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
 # ── LangChain (modern v0.2+ imports — no pydantic v1/v2 conflicts) ────────
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_groq import ChatGroq
 from langchain_community.vectorstores import FAISS
+from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains.retrieval import create_retrieval_chain
 from langchain_core.prompts import ChatPromptTemplate
@@ -41,14 +41,14 @@ MEMORY_FILE  = os.environ.get("MEMORY_FILE", "/data/memories.json" if os.path.is
 BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
 BOT_NAME     = "Joi"
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
-EMBED_MODEL  = "sentence-transformers/all-MiniLM-L6-v2"
+EMBED_MODEL  = "BAAI/bge-small-en-v1.5"  # Tiny, no PyTorch, ~50MB RAM
 
 app = Flask(__name__)
 CORS(app)
 
-# ── Embeddings (loaded once at startup) ───────────────────────────────────
+# ── Embeddings — FastEmbed (no PyTorch, fits in 512MB RAM) ────────────────
 print("⏳ Loading embedding model …")
-embeddings = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
+embeddings = FastEmbedEmbeddings(model_name=EMBED_MODEL)
 print("✅ Embeddings ready")
 
 # ── LLM via Groq (free, fast) ─────────────────────────────────────────────
@@ -105,7 +105,7 @@ def build_vectorstore(memories: list[dict]):
 
     return FAISS.from_documents(docs, embeddings)
 
-# ── RAG prompt — single braces so LangChain recognises {context} & {input}
+# ── RAG prompt — single braces so LangChain recognises {context} & {input} 
 RAG_PROMPT = ChatPromptTemplate.from_messages([
     ("system",
      f"You are {BOT_NAME}, a friendly personal memory assistant.\n"
