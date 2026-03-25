@@ -1,4 +1,4 @@
-# 🧠 Joi — AI Memory Assistant for Alzheimer's Patients
+# 🧠 Joi - AI Memory Assistant for Alzheimer's Patients
 
 ---
 
